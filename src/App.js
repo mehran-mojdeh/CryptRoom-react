@@ -1,17 +1,49 @@
-import {useState } from 'react';
+import axios from 'axios';
+import {useState, useEffect} from 'react';
 
+import Bubble from './bubble';
 
 
 function App() {
   const [isHeaderClosed, setHeaderState] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [timer, setTimer] = useState(null);
+  const [newMessage, setNewMessage] = useState('');
 
+  useEffect(() => {
+    axios.get('http://localhost:3000/api/messages')
+    .then(r => {
+      setMessages(r.data.data);
+      console.log(messages);
+    })
+    .catch( e => console.log(e));
+    scrollToEnd();
+  },[])
   const  toggleHeader = (e) => {
     e.preventDefault();
     setHeaderState(!isHeaderClosed);
   } 
   const scrollToEnd = (e) => {
-    console.log('scroll');
     document.getElementById('bottom').scrollIntoView();
+  }
+  const changeName = (e) => {
+    setName(e.target.value);
+  }
+  const changePassword = (e) => {
+    clearTimeout(timer);
+    e.target.type = 'text';
+    setPassword(e.target.value);
+    setTimer(setTimeout(() => {
+      e.target.type = 'password';
+    }, 2000))
+  }
+  const changeMessage = (e) => {
+    setNewMessage(e.target.innerText);
+  }
+  const sendMessage = (e) => {
+    console.log('Message sent');
   }
   return (
     <>
@@ -24,8 +56,8 @@ function App() {
           <p>Encrypted chatroom</p>
         </div>
         <div className="user">
-          <input type="text" placeholder="Name"/>
-          <input type="password" placeholder="Password"/>
+          <input type="text" placeholder="Name" onChange={changeName}/>
+          <input type="password" placeholder="Password" onChange={changePassword}/>
         </div>
         <div className="info">
           <p>You only can read messages which your password can unlock.</p>
@@ -39,26 +71,15 @@ function App() {
       </div>
       <div className="container">
         <p onClick={scrollToEnd}>...</p>
-        <div className='bubble '>
-          <p>
-            <span>mehran</span>
-            this is a sample text from me for testing and seeing styles
-            this is a sample textom me for testing and seeing styles
-          </p>
-        </div>
-        <div className='bubble unlocked'>
-          <p>
-            <span>mehran</span>
-            is a sample text from me for testing and seeing styles
-            this is a sample text from me for testing and seeing styles
-          </p>
-        </div>
+        <Bubble/>
+        <Bubble/>
+        <Bubble/>
         <div id='bottom'></div>
       </div>
       <div className='footer'>
         <div className='inputForm'>
-          <div className='textbox' contentEditable placeholder="Type your message here..."></div>
-          <button type="submit">Send</button>
+          <div className='textbox' contentEditable placeholder="Type your message here..." onKeyUp={changeMessage}></div>
+          <button type="submit" onClick={sendMessage}>Send</button>
         </div>
       </div>
     </>
