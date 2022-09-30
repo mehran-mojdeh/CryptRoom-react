@@ -156,7 +156,7 @@ body {
   box-shadow: 0 2px 5px 0;
   overflow: hidden;
   padding: 0 10px;
-  border-radius: 0 20px 20px 0;
+  border-radius: 0 10px 10px 0;
   border-left: solid 10px #750323;
   margin: 10px 0;
 }
@@ -172,6 +172,7 @@ body {
 }
 .bubble p {
   margin: 10px 0;
+  overflow: hidden;
 }
 .footer {
   position: fixed;

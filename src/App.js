@@ -11,12 +11,13 @@ function App() {
   const [password, setPassword] = useState('');
   const [timer, setTimer] = useState(null);
   const [newMessage, setNewMessage] = useState('');
+  const [secret, setSecret] = useState(null);
+  const [sign, setSign] = useState(null);
 
   useEffect(() => {
     axios.get('http://localhost:3000/api/messages')
     .then(r => {
       setMessages(r.data.data);
-      console.log(messages);
     })
     .catch( e => console.log(e));
     scrollToEnd();
@@ -71,9 +72,9 @@ function App() {
       </div>
       <div className="container">
         <p onClick={scrollToEnd}>...</p>
-        <Bubble/>
-        <Bubble/>
-        <Bubble/>
+        { messages.map((m) => 
+          <Bubble name={m.name} message={m.message} unlocked={(m.signiture === sign)} key={messages.indexOf(m)}/>
+        )}
         <div id='bottom'></div>
       </div>
       <div className='footer'>
