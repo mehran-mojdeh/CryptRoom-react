@@ -1,11 +1,14 @@
 import axios from 'axios';
+import {SHA3, AES, enc} from 'crypto-js';
 import {useState, useEffect} from 'react';
 
 import Bubble from './bubble';
 
+const host = process.env.REACT_APP_API;
 
 function App() {
   const [isHeaderClosed, setHeaderState] = useState(true);
+  const [loaded, setLoaded] = useState([]);
   const [messages, setMessages] = useState([]);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -13,38 +16,110 @@ function App() {
   const [newMessage, setNewMessage] = useState('');
   const [secret, setSecret] = useState(null);
   const [sign, setSign] = useState(null);
-
-  useEffect(() => {
-    axios.get('http://localhost:3000/api/messages')
-    .then(r => {
-      setMessages(r.data.data);
-    })
-    .catch( e => console.log(e));
-    scrollToEnd();
-  },[])
-  const  toggleHeader = (e) => {
+  
+  const toggleHeader = (e) => {
     e.preventDefault();
     setHeaderState(!isHeaderClosed);
   } 
   const scrollToEnd = (e) => {
-    document.getElementById('bottom').scrollIntoView();
+    document.getElementById('bottom').scrollIntoView({option:'smooth'});
   }
+
+  useEffect(() => {
+    loadMessages();
+  },[]);
+  useEffect(() => {
+    decryptMessages();
+  },[loaded, sign]);
+  useEffect(() => {
+    scrollToEnd();
+  }, [messages]);
+  useEffect(() => {
+    if (!password || password === '') {
+      setSecret(null);
+      return;
+    }
+    let scrt = password;
+    for(let i=0; i<1000; i++) {
+      scrt = SHA3(scrt, {salt:'', outputLength:256}).toString();
+    }
+    setSecret(scrt);
+    decryptMessages();
+  }, [password]);
+  useEffect(() => {
+    if (!secret) {
+      setSign(null);
+      return;
+    }
+    setSign(SHA3(password+secret, {salt:secret, outputLength:256}).toString())
+  }, [secret, password]);
   const changeName = (e) => {
     setName(e.target.value);
   }
   const changePassword = (e) => {
     clearTimeout(timer);
     e.target.type = 'text';
-    setPassword(e.target.value);
     setTimer(setTimeout(() => {
       e.target.type = 'password';
-    }, 2000))
+      setPassword(e.target.value);
+    }, 2500))
   }
   const changeMessage = (e) => {
     setNewMessage(e.target.innerText);
   }
-  const sendMessage = (e) => {
-    console.log('Message sent');
+  const loadMessages = () => {
+    axios.get(`${host}/api/messages`)
+    .then(r => {
+      setLoaded(r.data.data)
+      // scrollToEnd();
+    })
+    .catch( e => console.log(e));
+  }
+  const decryptMessages = () => {
+    const dms = loaded.map((m) => {
+      if(sign !== m.signiture) return m;
+      return {
+        name: m.name,
+        message: AES.decrypt(m.message, secret).toString(enc.Utf8),
+        signiture: m.signiture
+      }
+    });
+    setMessages(dms);
+  }
+  const sendMessage = async() => {
+    let errors = [];
+    console.dir({
+      name,
+      password,
+      newMessage
+    })
+    if(!name || name.length < 1) errors.push('Name is required');
+    if(!password || password.length < 1) errors.push('Password is required');
+    if(!newMessage || newMessage.length < 1) errors.push('Message is required')
+    if(errors.lenght > 0){
+      alert(errors.join('\n\n'));
+      return;
+    }
+    if(!secret || !sign) {
+      alert('Something went wrong.\nPlease enter your password again.');
+      return;
+    }
+    const encMessage = AES.encrypt(newMessage, secret).toString();
+    const data = {
+      name: name,
+      message: encMessage,
+      signiture: sign
+    }
+    await axios.post(`${host}/api/messages`, data)
+      .then((r) => {
+        if(r.status === 200) {
+          data['message'] = newMessage;
+          setMessages([...messages, data]);
+          loadMessages();
+        };
+      })
+      .catch((e) => console.error('Send Message:\n',e.message));
+    scrollToEnd();
   }
   return (
     <>
